@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createDonutChart(lcData);
                 createBarChart(lcData);
                 createLineChart(lcData);
+                createHeatMap(lcData);
             }
 
             // Fetch CodeChef stats
@@ -433,5 +434,140 @@ document.addEventListener('DOMContentLoaded', () => {
             .style('font-size', '14px')
             .style('font-weight', 'bold')
             .text(`Total Submissions: ${cumulativeCount}`);
+    }
+
+    // Add this after your existing chart functions
+    function createHeatMap(data) {
+        const heatMapContainer = document.getElementById('heat-map');
+        heatMapContainer.innerHTML = '<h3>Coding Activity Heat Map</h3>';
+
+        // Check if submissionCalendar exists and has data
+        if (!data.submissionCalendar || Object.keys(data.submissionCalendar).length === 0) {
+            heatMapContainer.innerHTML += '<p>No submission history data available.</p>';
+            return;
+        }
+
+        const margin = {top: 20, right: 30, bottom: 60, left: 60};
+        const width = 800 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+
+        const svg = d3.select('#heat-map')
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+        // Process submissionCalendar data
+        const timeData = [];
+        Object.entries(data.submissionCalendar).forEach(([timestamp, count]) => {
+            const date = new Date(parseInt(timestamp) * 1000);
+            timeData.push({
+                date: date,
+                count: count
+            });
+        });
+
+        // Group data by month and day
+        const groupedData = {};
+        timeData.forEach(d => {
+            const month = d.date.getMonth();
+            const day = d.date.getDay();
+            const key = `${month}-${day}`;
+            if (!groupedData[key]) {
+                groupedData[key] = 0;
+            }
+            groupedData[key] += d.count;
+        });
+
+        // Create scales
+        const x = d3.scaleBand()
+            .domain(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])
+            .range([0, width]);
+
+        const y = d3.scaleBand()
+            .domain(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+            .range([0, height]);
+
+        // Color scale
+        const colorScale = d3.scaleSequential()
+            .interpolator(d3.interpolateYlOrRd)
+            .domain([0, d3.max(Object.values(groupedData))]);
+
+        // Add X axis
+        svg.append('g')
+            .attr('transform', `translate(0, ${height})`)
+            .call(d3.axisBottom(x));
+
+        // Add Y axis
+        svg.append('g')
+            .call(d3.axisLeft(y));
+
+        // Create heat map cells
+        Object.entries(groupedData).forEach(([key, value]) => {
+            const [month, day] = key.split('-');
+            const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month];
+            const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day];
+
+            svg.append('rect')
+                .attr('x', x(dayName))
+                .attr('y', y(monthName))
+                .attr('width', x.bandwidth())
+                .attr('height', y.bandwidth())
+                .attr('fill', colorScale(value))
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 1);
+        });
+
+        // Add tooltip
+        const tooltip = d3.select('#heat-map')
+            .append('div')
+            .attr('class', 'tooltip')
+            .style('opacity', 0)
+            .style('position', 'absolute')
+            .style('background-color', 'white')
+            .style('border', '1px solid #ddd')
+            .style('border-radius', '3px')
+            .style('padding', '8px')
+            .style('pointer-events', 'none');
+
+        // Add hover effects
+        svg.selectAll('rect')
+            .on('mouseover', function(event, d) {
+                d3.select(this)
+                    .attr('stroke', '#000')
+                    .attr('stroke-width', 2);
+
+                tooltip.transition()
+                    .duration(200)
+                    .style('opacity', .9);
+
+                const [month, day] = d3.select(this).attr('data-key').split('-');
+                const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month];
+                const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day];
+
+                tooltip.html(`<strong>${monthName} ${dayName}</strong><br>` +
+                            `Submissions: ${d.value}`)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
+            })
+            .on('mouseout', function() {
+                d3.select(this)
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 1);
+
+                tooltip.transition()
+                    .duration(500)
+                    .style('opacity', 0);
+            });
+
+        // Add title
+        svg.append('text')
+            .attr('x', width / 2)
+            .attr('y', -margin.top / 2)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '14px')
+            .style('font-weight', 'bold')
+            .text('Coding Activity Heat Map');
     }
 });

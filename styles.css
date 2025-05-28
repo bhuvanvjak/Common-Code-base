@@ -116,6 +116,25 @@ li:last-child {
     grid-column: span 2;
 }
 
+
+#heat-map {
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#heat-map .tooltip {
+    position: absolute;
+    background: white;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    pointer-events: none;
+    z-index: 1000;
+}
+
 svg {
     margin: 0 auto;
     display: block;
