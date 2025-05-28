@@ -1,16 +1,16 @@
+
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Code Collectables</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="script.js" defer></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 </head>
 <body>
     <header>
-        <h1>Dsa Stats Collector</h1>
+        <h1>Code Collectable</h1>
     </header>
     <main>
         <section id="form-section">
@@ -22,10 +22,10 @@
                 <label for="email">Email:</label>
                 <input type="email" id="email" name="email" required>
 
-                <label for="name">LeetCode Name:</label>
+                <label for="LCname">LeetCode Name:</label>
                 <input type="text" id="LCname" name="LCname" required>
 
-                <label for="name">CodeChef Name:</label>
+                <label for="CCname">CodeChef Name:</label>
                 <input type="text" id="CCname" name="CCname" required>
 
                 <button type="submit">Submit</button>
@@ -42,6 +42,10 @@
             <div id="pie-chart"></div>
             <div id="bar-chart"></div>
             <div id="line-chart"></div>
+            <div id="heat-map"></div>
         </section>
     </main>
+
+    <script src="script.js"></script>
+</body>
 </html>

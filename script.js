@@ -98,10 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .innerRadius(radius * 0.5) // This makes it a donut chart
             .outerRadius(radius * 0.8);
             
-        const outerArc = d3.arc()
-            .innerRadius(radius * 0.9)
-            .outerRadius(radius * 0.9);
-            
         const pieData = [
             { name: 'Easy', value: data.easySolved },
             { name: 'Medium', value: data.mediumSolved },
@@ -265,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .text('Solved');
     }
     
-    // Function to create line chart for submission history based on submissionCalendar data
+    // Function to create line chart for submission history
     function createLineChart(data) {
         // Clear previous chart if it exists
         lineChartContainer.innerHTML = '<h3>Submission History</h3>';
@@ -288,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('transform', `translate(${margin.left}, ${margin.top})`);
             
         // Process submissionCalendar data
-        // The keys are Unix timestamps (seconds) and values are submission counts
         const timeData = [];
         let cumulativeCount = 0;
         
@@ -385,58 +380,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('cy', d => y(d.cumulative))
             .attr('r', 4)
             .attr('fill', '#00b8a3');
-            
-        // Add tooltip for data points
-        const tooltip = d3.select('#line-chart')
-            .append('div')
-            .attr('class', 'tooltip')
-            .style('opacity', 0)
-            .style('position', 'absolute')
-            .style('background-color', 'white')
-            .style('border', '1px solid #ddd')
-            .style('border-radius', '3px')
-            .style('padding', '8px')
-            .style('pointer-events', 'none');
-            
-        svg.selectAll('circle')
-            .on('mouseover', function(event, d) {
-                d3.select(this)
-                    .attr('r', 6)
-                    .attr('stroke', '#333')
-                    .attr('stroke-width', 2);
-                    
-                tooltip.transition()
-                    .duration(200)
-                    .style('opacity', .9);
-                    
-                const formatDate = d3.timeFormat("%b %d, %Y");
-                tooltip.html(`<strong>${formatDate(d.date)}</strong><br>` +
-                            `Daily: ${d.count} submissions<br>` +
-                            `Total: ${d.cumulative} submissions`)
-                    .style('left', (event.pageX + 10) + 'px')
-                    .style('top', (event.pageY - 28) + 'px');
-            })
-            .on('mouseout', function() {
-                d3.select(this)
-                    .attr('r', 4)
-                    .attr('stroke', 'none');
-                    
-                tooltip.transition()
-                    .duration(500)
-                    .style('opacity', 0);
-            });
-            
-        // Add title
-        svg.append('text')
-            .attr('x', width / 2)
-            .attr('y', -margin.top / 2)
-            .attr('text-anchor', 'middle')
-            .style('font-size', '14px')
-            .style('font-weight', 'bold')
-            .text(`Total Submissions: ${cumulativeCount}`);
     }
 
-    // Add this after your existing chart functions
+    // Function to create heat map for coding activity
     function createHeatMap(data) {
         const heatMapContainer = document.getElementById('heat-map');
         heatMapContainer.innerHTML = '<h3>Coding Activity Heat Map</h3>';
@@ -447,9 +393,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const margin = {top: 20, right: 30, bottom: 60, left: 60};
-        const width = 800 - margin.left - margin.right;
-        const height = 400 - margin.top - margin.bottom;
+        const margin = {top: 50, right: 30, bottom: 60, left: 100};
+        const cellSize = 15;
+        const daysInWeek = 7;
+        const weeksToShow = 52; // Show last 52 weeks
+        const width = cellSize * weeksToShow;
+        const height = cellSize * daysInWeek;
 
         const svg = d3.select('#heat-map')
             .append('svg')
@@ -459,115 +408,152 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
         // Process submissionCalendar data
-        const timeData = [];
+        const submissionData = {};
         Object.entries(data.submissionCalendar).forEach(([timestamp, count]) => {
             const date = new Date(parseInt(timestamp) * 1000);
-            timeData.push({
-                date: date,
-                count: count
+            const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+            submissionData[dateString] = count;
+        });
+
+        // Generate date range for the last year
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setFullYear(endDate.getFullYear() - 1);
+
+        const dateArray = [];
+        const currentDate = new Date(startDate);
+        
+        while (currentDate <= endDate) {
+            const dateString = currentDate.toISOString().split('T')[0];
+            const submissions = submissionData[dateString] || 0;
+            
+            dateArray.push({
+                date: new Date(currentDate),
+                dateString: dateString,
+                submissions: submissions,
+                week: d3.timeWeek.count(d3.timeYear(currentDate), currentDate),
+                day: currentDate.getDay()
             });
-        });
-
-        // Group data by month and day
-        const groupedData = {};
-        timeData.forEach(d => {
-            const month = d.date.getMonth();
-            const day = d.date.getDay();
-            const key = `${month}-${day}`;
-            if (!groupedData[key]) {
-                groupedData[key] = 0;
-            }
-            groupedData[key] += d.count;
-        });
-
-        // Create scales
-        const x = d3.scaleBand()
-            .domain(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])
-            .range([0, width]);
-
-        const y = d3.scaleBand()
-            .domain(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
-            .range([0, height]);
+            
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
 
         // Color scale
+        const maxSubmissions = d3.max(dateArray, d => d.submissions) || 1;
         const colorScale = d3.scaleSequential()
-            .interpolator(d3.interpolateYlOrRd)
-            .domain([0, d3.max(Object.values(groupedData))]);
-
-        // Add X axis
-        svg.append('g')
-            .attr('transform', `translate(0, ${height})`)
-            .call(d3.axisBottom(x));
-
-        // Add Y axis
-        svg.append('g')
-            .call(d3.axisLeft(y));
+            .interpolator(d3.interpolateGreens)
+            .domain([0, maxSubmissions]);
 
         // Create heat map cells
-        Object.entries(groupedData).forEach(([key, value]) => {
-            const [month, day] = key.split('-');
-            const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month];
-            const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day];
+        const cells = svg.selectAll('.cell')
+            .data(dateArray)
+            .enter()
+            .append('rect')
+            .attr('class', 'cell')
+            .attr('x', d => d.week * cellSize)
+            .attr('y', d => d.day * cellSize)
+            .attr('width', cellSize - 1)
+            .attr('height', cellSize - 1)
+            .attr('fill', d => d.submissions === 0 ? '#ebedf0' : colorScale(d.submissions))
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 1);
 
-            svg.append('rect')
-                .attr('x', x(dayName))
-                .attr('y', y(monthName))
-                .attr('width', x.bandwidth())
-                .attr('height', y.bandwidth())
-                .attr('fill', colorScale(value))
-                .attr('stroke', '#fff')
-                .attr('stroke-width', 1);
-        });
+        // Add day labels
+        const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        svg.selectAll('.day-label')
+            .data(dayLabels)
+            .enter()
+            .append('text')
+            .attr('class', 'day-label')
+            .attr('x', -10)
+            .attr('y', (d, i) => i * cellSize + cellSize / 2)
+            .attr('text-anchor', 'end')
+            .attr('alignment-baseline', 'middle')
+            .attr('font-size', '10px')
+            .text(d => d);
+
+        // Add month labels
+        const months = d3.timeMonths(startDate, endDate);
+        svg.selectAll('.month-label')
+            .data(months)
+            .enter()
+            .append('text')
+            .attr('class', 'month-label')
+            .attr('x', d => d3.timeWeek.count(d3.timeYear(d), d) * cellSize)
+            .attr('y', -10)
+            .attr('font-size', '10px')
+            .text(d => d3.timeFormat('%b')(d));
 
         // Add tooltip
         const tooltip = d3.select('#heat-map')
             .append('div')
             .attr('class', 'tooltip')
-            .style('opacity', 0)
-            .style('position', 'absolute')
-            .style('background-color', 'white')
-            .style('border', '1px solid #ddd')
-            .style('border-radius', '3px')
-            .style('padding', '8px')
-            .style('pointer-events', 'none');
+            .style('opacity', 0);
 
-        // Add hover effects
-        svg.selectAll('rect')
-            .on('mouseover', function(event, d) {
-                d3.select(this)
-                    .attr('stroke', '#000')
-                    .attr('stroke-width', 2);
+        cells.on('mouseover', function(event, d) {
+            d3.select(this)
+                .attr('stroke', '#000')
+                .attr('stroke-width', 2);
 
-                tooltip.transition()
-                    .duration(200)
-                    .style('opacity', .9);
+            tooltip.transition()
+                .duration(200)
+                .style('opacity', .9);
 
-                const [month, day] = d3.select(this).attr('data-key').split('-');
-                const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month];
-                const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day];
+            const formatDate = d3.timeFormat("%B %d, %Y");
+            tooltip.html(`<strong>${formatDate(d.date)}</strong><br>` +
+                        `Submissions: ${d.submissions}`)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 28) + 'px');
+        })
+        .on('mouseout', function() {
+            d3.select(this)
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 1);
 
-                tooltip.html(`<strong>${monthName} ${dayName}</strong><br>` +
-                            `Submissions: ${d.value}`)
-                    .style('left', (event.pageX + 10) + 'px')
-                    .style('top', (event.pageY - 28) + 'px');
-            })
-            .on('mouseout', function() {
-                d3.select(this)
-                    .attr('stroke', '#fff')
-                    .attr('stroke-width', 1);
+            tooltip.transition()
+                .duration(500)
+                .style('opacity', 0);
+        });
 
-                tooltip.transition()
-                    .duration(500)
-                    .style('opacity', 0);
-            });
+        // Add legend
+        const legendWidth = 200;
+        const legendHeight = 10;
+        const legend = svg.append('g')
+            .attr('transform', `translate(${width - legendWidth}, ${height + 30})`);
 
-        // Add title
-        svg.append('text')
-            .attr('x', width / 2)
-            .attr('y', -margin.top / 2)
+        const legendScale = d3.scaleLinear()
+            .domain([0, maxSubmissions])
+            .range([0, legendWidth]);
+
+        const legendAxis = d3.axisBottom(legendScale)
+            .ticks(5)
+            .tickFormat(d3.format('d'));
+
+        const defs = svg.append('defs');
+        const linearGradient = defs.append('linearGradient')
+            .attr('id', 'legend-gradient');
+
+        linearGradient.selectAll('stop')
+            .data(d3.range(0, 1.1, 0.1))
+            .enter()
+            .append('stop')
+            .attr('offset', d => `${d * 100}%`)
+            .attr('stop-color', d => colorScale(d * maxSubmissions));
+
+        legend.append('rect')
+            .attr('width', legendWidth)
+            .attr('height', legendHeight)
+            .style('fill', 'url(#legend-gradient)');
+
+        legend.append('g')
+            .attr('transform', `translate(0, ${legendHeight})`)
+            .call(legendAxis);
+
+        legend.append('text')
+            .attr('x', legendWidth / 2)
+            .attr('y', -5)
             .attr('text-anchor', 'middle')
-            .style('font-size', '14px')
-            .style('font-weight', 'bold')
-            .text('Coding Activity Heat Map');
+            .attr('font-size', '12px')
+            .text('Submissions per day');
     }
 });

@@ -55,6 +55,7 @@ input {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 16px;
+    box-sizing: border-box;
 }
 
 button {
@@ -98,7 +99,7 @@ li:last-child {
     grid-column: span 2;
 }
 
-#pie-chart, #bar-chart, #line-chart {
+#pie-chart, #bar-chart, #line-chart, #heat-map {
     background-color: white;
     border-radius: 8px;
     padding: 15px;
@@ -106,33 +107,14 @@ li:last-child {
     min-height: 350px;
 }
 
-#pie-chart h3, #bar-chart h3, #line-chart h3 {
+#pie-chart h3, #bar-chart h3, #line-chart h3, #heat-map h3 {
     margin-top: 0;
     color: #4b6cb7;
     text-align: center;
 }
 
-#line-chart {
+#line-chart, #heat-map {
     grid-column: span 2;
-}
-
-
-#heat-map {
-    margin: 20px 0;
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-#heat-map .tooltip {
-    position: absolute;
-    background: white;
-    padding: 8px;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    pointer-events: none;
-    z-index: 1000;
 }
 
 svg {
@@ -166,7 +148,7 @@ svg {
         grid-template-columns: 1fr;
     }
     
-    #line-chart {
+    #line-chart, #heat-map {
         grid-column: span 1;
     }
 }
